@@ -9,38 +9,40 @@ namespace Bustroker.ParallelExceptions
     {
         static async Task Main(string[] args)
         {
-            List<Runner> runners = BuildRunners();
-
-            Task wholeTask = null;
+            var runnersTasks = new List<Task>();
+            Task compositeTask = null;
             try
             {
-                var runnersTasks = new List<Task>();
-                runners.ForEach(r => runnersTasks.Add(r.RunAsync()));
-                wholeTask = Task.WhenAll(runnersTasks);
-                await wholeTask;
+                // run all the tasks and keep them in the list
+                Runners.ForEach(r => runnersTasks.Add(r.RunAsync()));
+
+                // just wait for them all to finish, and keep a reference to this compose task
+                compositeTask = Task.WhenAll(runnersTasks);
+                await compositeTask;
             }
             catch (Exception ex)
             {
                 // note that the exception catched IS NOT the AggregateException, but the first exception thrown
                 Console.WriteLine($"First exception catched: '{ex.Message}'");
-                wholeTask?
-                    .Exception?
-                    .InnerExceptions // here are all the exceptions
-                    .ToList()
-                    .ForEach(ex => Console.WriteLine($"Catched ex => '{ex.Message}'"));
+                //usually just throw back the full AggregateException, rather than just the first exception catched here
+                throw compositeTask.Exception;
             }
         }
 
-        private static List<Runner> BuildRunners()
+        private static List<Runner> Runners
         {
-            var runners = new List<Runner>();
-
-            for (int i = 0; i < 3; i++)
+            get
             {
-                runners.Add(new Runner($"Runner-0{i}", i * 100));
-            }
+                var runners = new List<Runner>();
 
-            return runners;
+                for (int i = 0; i < 5; i++)
+                {
+                    runners.Add(new Runner($"Runner-0{i}", i * 100));
+                }
+
+                return runners;
+            }
         }
+
     }
 }
